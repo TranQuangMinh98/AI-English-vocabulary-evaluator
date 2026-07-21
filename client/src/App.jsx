@@ -154,6 +154,11 @@ function App() {
 
         {result && <EvaluationResult result={result} onEvaluateAnother={handleEvaluateAnother} evaluationMode={evaluationMode} />}
       </main>
+
+      {/* Footer */}
+      <footer className="mt-auto py-6 text-center text-gray-600 text-sm">
+        Build and Design by Mivaroku
+      </footer>
     </div>
   );
 }

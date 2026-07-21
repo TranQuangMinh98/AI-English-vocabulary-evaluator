@@ -87,7 +87,11 @@ Respond ONLY with valid JSON in this exact format:
       });
 
       // Parse the response
-      const responseText = message.content[0].text;
+      let responseText = message.content[0].text;
+
+      // Remove markdown code blocks if present (```json ... ```)
+      responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+
       const evaluation = JSON.parse(responseText);
 
       return res.json(evaluation);

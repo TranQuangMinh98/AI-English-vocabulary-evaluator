@@ -32,8 +32,8 @@ This guide will help you deploy the CEFR English Evaluator to Vercel.
 6. **Add Environment Variables:**
    Click "Environment Variables" and add:
    ```
-   ANTHROPIC_API_KEY=sk-2wcPNLAhVm6WxfcSQYjpXxPvymSwjU3qpSVz2d8clxZ9VYdp
-   ANTHROPIC_BASE_URL=https://v98store.com
+   ANTHROPIC_API_KEY=<Your Key>
+   ANTHROPIC_BASE_URL=<Your Base URL>
    ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
    ```
 

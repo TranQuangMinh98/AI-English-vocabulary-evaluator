@@ -1,0 +1,20 @@
+{
+  "name": "cefr-evaluator",
+  "version": "1.0.0",
+  "description": "CEFR English Writing Evaluator",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm start",
+    "dev:client": "cd client && npm run dev",
+    "test:server": "cd server && npm test",
+    "build:client": "cd client && npm run build"
+  },
+  "keywords": [
+    "cefr",
+    "english",
+    "evaluation",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}

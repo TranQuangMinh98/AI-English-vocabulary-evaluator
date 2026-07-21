@@ -1,15 +1,25 @@
-# CEFR English Writing Evaluator
+# CEFR English Evaluator
 
-A demo web application that evaluates English text based on CEFR (Common European Framework of Reference for Languages) standards across four attributes: Complexity, Accuracy, Fluency, and Clarity.
+A demo web application that evaluates English **writing** and **speaking** based on CEFR (Common European Framework of Reference for Languages) standards with AI-powered feedback.
 
 ## Features
 
-- **CEFR Evaluation**: Evaluate text across all 6 CEFR levels (A1-C2)
+### Text Evaluation Mode
+- **CEFR Evaluation**: Evaluate written text (100-1000 words) across all 6 CEFR levels (A1-C2)
 - **Four Attributes**: Get detailed feedback on Complexity, Accuracy, Fluency, and Clarity
+
+### Speaking Evaluation Mode (NEW)
+- **Audio Recording**: Record your speech directly in the browser
+- **CEFR Speaking Assessment**: Evaluate spoken English across all 6 CEFR levels (A1-C2)
+- **Four Attributes**: Get detailed feedback on Complexity, Accuracy, Fluency, and Pronunciation
+- **Audio Playback**: Preview your recording before submission
+
+### General Features
+- **Dual Mode**: Switch between Text and Speaking evaluation modes
 - **Visual Progress Bars**: See your level with color-coded segmented progress bars
 - **Overall Score**: Conservative overall level assessment (lowest of 4 attributes)
 - **Responsive Design**: Works seamlessly on mobile, tablet, and desktop
-- **AI-Powered**: Uses Claude AI for intelligent evaluation
+- **AI-Powered**: Uses Claude AI for intelligent evaluation with audio processing capabilities
 
 ## Tech Stack
 
@@ -21,7 +31,8 @@ A demo web application that evaluates English text based on CEFR (Common Europea
 ### Backend
 - Node.js
 - Express
-- Claude API (Anthropic)
+- Multer (file upload handling)
+- Claude API (Anthropic) with audio support
 
 ## Project Structure
 
@@ -108,12 +119,24 @@ npm test
 
 ## Usage
 
+### Text Evaluation
 1. Open the application in your browser
-2. Read the prompt: "Write about your day in English"
-3. Enter your text (100-1000 words)
-4. Click "Evaluate" to get your CEFR assessment
-5. View your overall level and detailed feedback for each attribute
-6. Click "Evaluate Another" to try again with different text
+2. Select **"Text Evaluation"** mode (default)
+3. Read the prompt: "Write about your day in English"
+4. Enter your text (100-1000 words)
+5. Click "Evaluate" to get your CEFR assessment
+6. View your overall level and detailed feedback for each attribute
+
+### Speaking Evaluation
+1. Open the application in your browser
+2. Select **"Speaking Evaluation"** mode
+3. Click "Start Recording" and speak about your day in English
+4. Click "Stop Recording" when finished
+5. Preview your recording (optional)
+6. Click "Evaluate Speaking" to get your CEFR assessment
+7. View your overall level and detailed feedback for Complexity, Accuracy, Fluency, and Pronunciation
+
+Click "Evaluate Another" to try again in either mode.
 
 ## CEFR Levels
 
@@ -159,6 +182,43 @@ Evaluates the provided text and returns CEFR assessment.
     },
     "clarity": {
       "level": "C1",
+      "feedback": "Descriptive feedback..."
+    }
+  }
+}
+```
+
+### POST /api/evaluate-audio (NEW)
+
+Evaluates the provided audio recording and returns CEFR speaking assessment.
+
+**Request Body:**
+- FormData with audio file (field name: `audio`)
+- Supported formats: WebM, WAV, MP3, OGG
+- Maximum file size: 10MB
+
+**Response:**
+```json
+{
+  "overall": {
+    "level": "B1",
+    "explanation": "Overall level is determined by the lowest attribute score"
+  },
+  "attributes": {
+    "complexity": {
+      "level": "B2",
+      "feedback": "Descriptive feedback..."
+    },
+    "accuracy": {
+      "level": "B1",
+      "feedback": "Descriptive feedback..."
+    },
+    "fluency": {
+      "level": "B2",
+      "feedback": "Descriptive feedback..."
+    },
+    "pronunciation": {
+      "level": "B1",
       "feedback": "Descriptive feedback..."
     }
   }

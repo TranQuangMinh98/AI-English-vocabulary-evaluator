@@ -11,7 +11,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "coveragePathIgnorePatterns": ["/node_modules/"]
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -21,7 +23,8 @@
     "@anthropic-ai/sdk": "^0.112.4",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

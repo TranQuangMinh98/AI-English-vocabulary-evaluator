@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createEvaluationRouter } = require('./routes/evaluate');
+const { createAudioEvaluationRouter } = require('./routes/evaluate-audio');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,7 @@ const anthropic = new Anthropic({
 
 // Routes
 app.use('/api', createEvaluationRouter(anthropic));
+app.use('/api', createAudioEvaluationRouter(anthropic));
 
 // Health check
 app.get('/health', (req, res) => {

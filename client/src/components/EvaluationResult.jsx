@@ -1,12 +1,21 @@
 import CEFRProgressBar from './CEFRProgressBar';
 
-function EvaluationResult({ result, onEvaluateAnother }) {
-  const attributes = [
+function EvaluationResult({ result, onEvaluateAnother, evaluationMode = 'text' }) {
+  const textAttributes = [
     { key: 'complexity', label: 'Complexity' },
     { key: 'accuracy', label: 'Accuracy' },
     { key: 'fluency', label: 'Fluency' },
     { key: 'clarity', label: 'Clarity' }
   ];
+
+  const speakingAttributes = [
+    { key: 'complexity', label: 'Complexity' },
+    { key: 'accuracy', label: 'Accuracy' },
+    { key: 'fluency', label: 'Fluency' },
+    { key: 'pronunciation', label: 'Pronunciation' }
+  ];
+
+  const attributes = evaluationMode === 'speaking' ? speakingAttributes : textAttributes;
 
   return (
     <div className="mt-8 space-y-6 animate-fade-in">

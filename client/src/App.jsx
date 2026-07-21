@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TextInputForm from './components/TextInputForm';
+import AudioInputForm from './components/AudioInputForm';
 import LoadingSpinner from './components/LoadingSpinner';
 import EvaluationResult from './components/EvaluationResult';
 import ErrorMessage from './components/ErrorMessage';
@@ -11,6 +12,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [submittedText, setSubmittedText] = useState('');
+  const [evaluationMode, setEvaluationMode] = useState('text'); // 'text' or 'speaking'
 
   const handleSubmit = async (text) => {
     setIsLoading(true);
@@ -42,6 +44,35 @@ function App() {
     }
   };
 
+  const handleAudioSubmit = async (audioBlob) => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      const response = await fetch(`${API_URL}/api/evaluate-audio`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to evaluate audio');
+      }
+
+      setResult(data);
+    } catch (err) {
+      console.error('Audio evaluation error:', err);
+      setError(err.message || 'We couldn\'t evaluate your audio right now. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRetry = () => {
     if (submittedText) {
       handleSubmit(submittedText);
@@ -56,18 +87,51 @@ function App() {
     setSubmittedText('');
   };
 
+  const handleModeChange = (mode) => {
+    setEvaluationMode(mode);
+    setResult(null);
+    setError(null);
+    setSubmittedText('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center">
-            CEFR English Writing Evaluator
+            CEFR English Evaluator
           </h1>
           <p className="mt-2 text-base sm:text-lg text-gray-600 text-center">
-            Get instant feedback on your English writing across Complexity, Accuracy, Fluency,
-            and Clarity based on CEFR standards (A1-C2)
+            {evaluationMode === 'text'
+              ? 'Get instant feedback on your English writing across Complexity, Accuracy, Fluency, and Clarity based on CEFR standards (A1-C2)'
+              : 'Get instant feedback on your English speaking across Complexity, Accuracy, Fluency, and Pronunciation based on CEFR standards (A1-C2)'
+            }
           </p>
+
+          {/* Mode Switcher */}
+          <div className="flex justify-center mt-6 gap-4">
+            <button
+              onClick={() => handleModeChange('text')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                evaluationMode === 'text'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Text Evaluation
+            </button>
+            <button
+              onClick={() => handleModeChange('speaking')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                evaluationMode === 'speaking'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Speaking Evaluation
+            </button>
+          </div>
         </div>
       </header>
 
@@ -75,7 +139,11 @@ function App() {
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {!result && !isLoading && !error && (
           <div className="bg-white rounded-lg shadow-md p-6 sm:p-8">
-            <TextInputForm onSubmit={handleSubmit} isLoading={isLoading} />
+            {evaluationMode === 'text' ? (
+              <TextInputForm onSubmit={handleSubmit} isLoading={isLoading} />
+            ) : (
+              <AudioInputForm onSubmit={handleAudioSubmit} isLoading={isLoading} />
+            )}
           </div>
         )}
 
@@ -83,7 +151,7 @@ function App() {
 
         {error && <ErrorMessage message={error} onRetry={handleRetry} />}
 
-        {result && <EvaluationResult result={result} onEvaluateAnother={handleEvaluateAnother} />}
+        {result && <EvaluationResult result={result} onEvaluateAnother={handleEvaluateAnother} evaluationMode={evaluationMode} />}
       </main>
 
       {/* Footer */}

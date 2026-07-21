@@ -22,10 +22,5 @@
       "src": "/(.*)",
       "dest": "client/$1"
     }
-  ],
-  "env": {
-    "ANTHROPIC_API_KEY": "@anthropic_api_key",
-    "ANTHROPIC_BASE_URL": "@anthropic_base_url",
-    "ANTHROPIC_MODEL": "@anthropic_model"
-  }
+  ]
 }

@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(node index.js)",
+      "Bash(npm run *)"
+    ]
+  },
   "skillOverrides": {
     "sndev": "name-only"
   }

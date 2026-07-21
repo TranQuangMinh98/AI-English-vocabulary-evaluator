@@ -1,41 +1,78 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 function AudioInputForm({ onSubmit, isLoading }) {
   const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState(null);
+  const [transcript, setTranscript] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
-  const [audioURL, setAudioURL] = useState(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [speechSupported, setSpeechSupported] = useState(true);
 
-  const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
+  const recognitionRef = useRef(null);
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    // Check if browser supports Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      console.warn('Speech Recognition not supported in this browser');
+    }
+  }, []);
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+      if (!SpeechRecognition) {
+        alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+        return;
+      }
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      let finalTranscript = '';
+
+      recognition.onresult = (event) => {
+        let interim = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+            setTranscript(finalTranscript);
+          } else {
+            interim += transcript;
+          }
+        }
+
+        setInterimTranscript(interim);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          console.log('No speech detected');
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        setAudioURL(URL.createObjectURL(blob));
-
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+      recognition.onend = () => {
+        if (isRecording) {
+          // Restart if still recording (handles auto-stop)
+          recognition.start();
+        }
       };
 
-      mediaRecorder.start();
+      recognition.start();
+      recognitionRef.current = recognition;
+
       setIsRecording(true);
       setRecordingTime(0);
+      setTranscript('');
+      setInterimTranscript('');
 
       // Start timer
       timerRef.current = setInterval(() => {
@@ -43,15 +80,17 @@ function AudioInputForm({ onSubmit, isLoading }) {
       }, 1000);
 
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      alert('Could not access microphone. Please grant permission and try again.');
+      console.error('Error starting speech recognition:', error);
+      alert('Could not start speech recognition. Please grant microphone permission and try again.');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (recognitionRef.current && isRecording) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
       setIsRecording(false);
+      setInterimTranscript('');
 
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -61,18 +100,16 @@ function AudioInputForm({ onSubmit, isLoading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (audioBlob && !isLoading) {
-      onSubmit(audioBlob);
+    if (transcript.trim() && !isLoading) {
+      // Submit the transcript for evaluation
+      onSubmit(transcript.trim());
     }
   };
 
   const handleReset = () => {
-    setAudioBlob(null);
-    setAudioURL(null);
+    setTranscript('');
+    setInterimTranscript('');
     setRecordingTime(0);
-    if (audioURL) {
-      URL.revokeObjectURL(audioURL);
-    }
   };
 
   const formatTime = (seconds) => {
@@ -81,7 +118,20 @@ function AudioInputForm({ onSubmit, isLoading }) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const canSubmit = audioBlob && !isLoading;
+  const canSubmit = transcript.trim().length > 0 && !isLoading;
+
+  if (!speechSupported) {
+    return (
+      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 text-center">
+        <p className="text-yellow-800 font-semibold">
+          Speech recognition is not supported in your browser.
+        </p>
+        <p className="text-yellow-700 mt-2">
+          Please use Chrome, Edge, or Safari for the speaking evaluation feature.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -96,7 +146,7 @@ function AudioInputForm({ onSubmit, isLoading }) {
             {isRecording && (
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-                <span className="text-red-600 font-semibold">Recording...</span>
+                <span className="text-red-600 font-semibold">Recording & Transcribing...</span>
               </div>
             )}
 
@@ -107,7 +157,7 @@ function AudioInputForm({ onSubmit, isLoading }) {
 
             {/* Recording Controls */}
             <div className="flex gap-4">
-              {!isRecording && !audioBlob && (
+              {!isRecording && !transcript && (
                 <button
                   type="button"
                   onClick={startRecording}
@@ -134,7 +184,7 @@ function AudioInputForm({ onSubmit, isLoading }) {
                 </button>
               )}
 
-              {audioBlob && !isRecording && (
+              {transcript && !isRecording && (
                 <button
                   type="button"
                   onClick={handleReset}
@@ -147,19 +197,30 @@ function AudioInputForm({ onSubmit, isLoading }) {
             </div>
           </div>
 
-          {/* Audio Playback */}
-          {audioURL && (
+          {/* Transcript Display */}
+          {(transcript || interimTranscript) && (
             <div className="mt-6">
-              <p className="text-sm text-gray-600 mb-2">Preview your recording:</p>
-              <audio src={audioURL} controls className="w-full max-w-md mx-auto" />
+              <p className="text-sm text-gray-600 mb-2 font-semibold">Transcription:</p>
+              <div className="bg-white border border-gray-300 rounded-lg p-4 max-h-48 overflow-y-auto text-left">
+                <p className="text-gray-800">
+                  {transcript}
+                  {interimTranscript && (
+                    <span className="text-gray-400 italic">{interimTranscript}</span>
+                  )}
+                </p>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Word count: {transcript.trim().split(/\s+/).filter(w => w.length > 0).length}
+              </p>
             </div>
           )}
 
           {/* Instructions */}
-          {!audioBlob && !isRecording && (
+          {!transcript && !isRecording && (
             <div className="mt-4 text-sm text-gray-600 space-y-1">
               <p>Click "Start Recording" to begin</p>
-              <p>Speak for at least 30 seconds</p>
+              <p>Speak clearly about your day in English</p>
+              <p>Your speech will be transcribed in real-time</p>
               <p>Click "Stop Recording" when finished</p>
             </div>
           )}

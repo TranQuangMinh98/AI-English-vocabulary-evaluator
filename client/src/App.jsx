@@ -44,30 +44,31 @@ function App() {
     }
   };
 
-  const handleAudioSubmit = async (audioBlob) => {
+  const handleAudioSubmit = async (transcript) => {
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setSubmittedText(transcript);
 
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-
-      const response = await fetch(`${API_URL}/api/evaluate-audio`, {
+      const response = await fetch(`${API_URL}/api/evaluate-speaking`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transcript }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to evaluate audio');
+        throw new Error(data.error || 'Failed to evaluate speaking');
       }
 
       setResult(data);
     } catch (err) {
-      console.error('Audio evaluation error:', err);
-      setError(err.message || 'We couldn\'t evaluate your audio right now. Please try again.');
+      console.error('Speaking evaluation error:', err);
+      setError(err.message || 'We couldn\'t evaluate your speaking right now. Please try again.');
     } finally {
       setIsLoading(false);
     }

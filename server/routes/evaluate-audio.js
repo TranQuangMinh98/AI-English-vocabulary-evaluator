@@ -80,31 +80,103 @@ Respond ONLY with valid JSON in this exact format:
   }
 }`;
 
-      // Call Claude API with audio
-      const message = await anthropicClient.messages.create({
+      // Step 1: Transcribe the audio using Claude API
+      let transcription;
+      try {
+        const transcriptionMessage = await anthropicClient.messages.create({
+          model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+          max_tokens: 2048,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: audioBase64
+                },
+                cache_control: { type: 'ephemeral' }
+              },
+              {
+                type: 'text',
+                text: 'Please transcribe this audio recording word-for-word. Only provide the transcription text, nothing else.'
+              }
+            ]
+          }]
+        });
+
+        transcription = transcriptionMessage.content[0].text.trim();
+        console.log('Transcription:', transcription);
+      } catch (transcriptionError) {
+        console.error('Transcription failed, trying text-only evaluation:', transcriptionError);
+
+        // If document type fails, return a helpful error
+        if (transcriptionError.status === 429 || transcriptionError.message?.includes('429')) {
+          return res.status(503).json({
+            error: 'Audio transcription is not supported by your API endpoint. Please contact your API provider to enable audio/document support, or use the text evaluation mode instead.'
+          });
+        }
+
+        throw transcriptionError;
+      }
+
+      // Step 2: Evaluate the transcription for speaking characteristics
+      const evaluationPrompt = `You are an expert English language evaluator using CEFR (Common European Framework of Reference for Languages) standards.
+
+A speaker was recorded saying the following (transcription):
+
+"${transcription}"
+
+Based on this transcription, evaluate the speaker's English across these 4 attributes:
+1. Complexity - vocabulary range, sentence structure variety, sophistication of language used
+2. Accuracy - grammar correctness, proper word usage (infer from transcription)
+3. Fluency - naturalness of expression, coherence, sentence flow (infer from transcription)
+4. Pronunciation - Since you don't have audio, evaluate based on vocabulary complexity and assume pronunciation matches the accuracy level
+
+For each attribute, provide:
+- A CEFR level (A1, A2, B1, B2, C1, or C2)
+- Brief descriptive feedback (2-3 sentences)
+
+Also provide an overall CEFR level (the lowest of the 4 attributes) with a brief explanation.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "overall": {
+    "level": "B1",
+    "explanation": "Overall level is determined by the lowest attribute score"
+  },
+  "attributes": {
+    "complexity": {
+      "level": "B2",
+      "feedback": "Descriptive feedback here"
+    },
+    "accuracy": {
+      "level": "B1",
+      "feedback": "Descriptive feedback here"
+    },
+    "fluency": {
+      "level": "B2",
+      "feedback": "Descriptive feedback here"
+    },
+    "pronunciation": {
+      "level": "B1",
+      "feedback": "Descriptive feedback here"
+    }
+  }
+}`;
+
+      const evaluationMessage = await anthropicClient.messages.create({
         model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: 1024,
         messages: [{
           role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: audioBase64
-              }
-            },
-            {
-              type: 'text',
-              text: prompt
-            }
-          ]
+          content: evaluationPrompt
         }]
       });
 
       // Parse the response
-      let responseText = message.content[0].text;
+      let responseText = evaluationMessage.content[0].text;
 
       // Remove markdown code blocks if present (```json ... ```)
       responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
@@ -115,6 +187,8 @@ Respond ONLY with valid JSON in this exact format:
 
     } catch (error) {
       console.error('Audio evaluation error:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
 
       if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
@@ -125,7 +199,9 @@ Respond ONLY with valid JSON in this exact format:
       }
 
       return res.status(500).json({
-        error: 'Failed to evaluate audio. Please try again.'
+        error: 'Failed to evaluate audio. Please try again.',
+        details: error.message,
+        type: error.name
       });
     }
   });

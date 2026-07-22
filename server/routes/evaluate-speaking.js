@@ -1,4 +1,5 @@
 const express = require('express');
+const { parseEvaluationJson, handleEvaluationError } = require('../lib/evaluation-helpers');
 
 function createSpeakingEvaluationRouter(anthropicClient) {
   const router = express.Router();
@@ -74,25 +75,13 @@ Respond ONLY with valid JSON in this exact format:
         }]
       });
 
-      // Parse the response
-      let responseText = message.content[0].text;
-
-      // Remove markdown code blocks if present (```json ... ```)
-      responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
-
-      const evaluation = JSON.parse(responseText);
+      // Parse the response (handles ```json fences and stray text)
+      const evaluation = parseEvaluationJson(message.content[0]?.text);
 
       return res.json(evaluation);
 
     } catch (error) {
-      console.error('Speaking evaluation error:', error);
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
-
-      return res.status(500).json({
-        error: 'Failed to evaluate speaking. Please try again.',
-        details: error.message
-      });
+      return handleEvaluationError(error, res, 'speaking');
     }
   });
 

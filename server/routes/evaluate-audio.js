@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
 const path = require('path');
+const { parseEvaluationJson, handleEvaluationError } = require('../lib/evaluation-helpers');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -175,34 +176,23 @@ Respond ONLY with valid JSON in this exact format:
         }]
       });
 
-      // Parse the response
-      let responseText = evaluationMessage.content[0].text;
-
-      // Remove markdown code blocks if present (```json ... ```)
-      responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
-
-      const evaluation = JSON.parse(responseText);
+      // Parse the response (handles ```json fences and stray text)
+      const evaluation = parseEvaluationJson(evaluationMessage.content[0]?.text);
 
       return res.json(evaluation);
 
     } catch (error) {
-      console.error('Audio evaluation error:', error);
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
-
+      // Multer upload errors are client-side (bad/oversized file).
       if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({
             error: 'Audio file is too large. Maximum size is 10MB.'
           });
         }
+        return res.status(400).json({ error: `Upload error: ${error.message}` });
       }
 
-      return res.status(500).json({
-        error: 'Failed to evaluate audio. Please try again.',
-        details: error.message,
-        type: error.name
-      });
+      return handleEvaluationError(error, res, 'audio');
     }
   });
 

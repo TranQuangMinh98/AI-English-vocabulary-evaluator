@@ -1,4 +1,5 @@
 const express = require('express');
+const { parseEvaluationJson, handleEvaluationError } = require('../lib/evaluation-helpers');
 
 function countWords(text) {
   return text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -86,21 +87,13 @@ Respond ONLY with valid JSON in this exact format:
         }]
       });
 
-      // Parse the response
-      let responseText = message.content[0].text;
-
-      // Remove markdown code blocks if present (```json ... ```)
-      responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
-
-      const evaluation = JSON.parse(responseText);
+      // Parse the response (handles ```json fences and stray text)
+      const evaluation = parseEvaluationJson(message.content[0]?.text);
 
       return res.json(evaluation);
 
     } catch (error) {
-      console.error('Evaluation error:', error);
-      return res.status(500).json({
-        error: 'Failed to evaluate text. Please try again.'
-      });
+      return handleEvaluationError(error, res, 'text');
     }
   });
 

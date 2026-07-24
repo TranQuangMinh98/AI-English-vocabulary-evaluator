@@ -5,7 +5,10 @@ import LoadingSpinner from './components/LoadingSpinner';
 import EvaluationResult from './components/EvaluationResult';
 import ErrorMessage from './components/ErrorMessage';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// In production the client and API share the same origin (see vercel.json),
+// so default to a relative path. VITE_API_URL can override for split hosting.
+// Locally, the Vite dev server proxies /api to the backend (see vite.config.js).
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);

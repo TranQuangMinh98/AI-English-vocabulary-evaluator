@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 
+skills/
 # IDE
 .vscode/
 .idea/

@@ -35,6 +35,14 @@ function EvaluationResult({ result, onEvaluateAnother, evaluationMode = 'text' }
             <div key={key} className="bg-white rounded-lg shadow-md p-6">
               <CEFRProgressBar level={attr.level} attribute={label} />
               <p className="mt-4 text-sm text-gray-600">{attr.feedback}</p>
+              {attr.tip && (
+                <div className="mt-4 rounded-lg bg-blue-50 border border-blue-100 p-4">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-blue-800">
+                    <span aria-hidden="true">💡</span> Tip to improve
+                  </p>
+                  <p className="mt-1.5 text-sm text-blue-900/80">{attr.tip}</p>
+                </div>
+              )}
             </div>
           );
         })}

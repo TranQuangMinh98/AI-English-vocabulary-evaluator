@@ -224,11 +224,3 @@ Evaluates the provided audio recording and returns CEFR speaking assessment.
   }
 }
 ```
-
-## License
-
-MIT
-
-## Powered By
-
-Claude AI by Anthropic

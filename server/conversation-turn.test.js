@@ -62,6 +62,7 @@ describe('POST /api/conversation-turn', () => {
     [undefined],
     [{ questionId: 'missing', response: 'Minh', inputMode: 'text' }],
     [{ questionId: 'toString', response: 'Minh', inputMode: 'text' }],
+    [{ questionId: '__proto__', response: 'Minh', inputMode: 'text' }],
     [{ questionId: 'intro-name', response: ' ', inputMode: 'text' }],
     [{ questionId: 'intro-name', response: 'x'.repeat(2001), inputMode: 'text' }],
     [{ questionId: 'intro-name', response: 'Minh', inputMode: 'audio' }]

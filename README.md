@@ -23,7 +23,7 @@ Requires Node.js 18+ and npm.
 npm run install:all
 ```
 
-Copy `server/.env.example` to `server/.env`, then set `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-5-nano`.
+Copy `server/.env.example` to `server/.env`, then set `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-5-nano`. Set `OPENAI_BASE_URL` only when using an OpenAI-compatible proxy; otherwise leave it unset.
 
 `ANTHROPIC_API_KEY` remains optional and is used only by dormant `POST /api/evaluate-audio`. Without it, that route returns `503` while the server and Conversation continue normally.
 

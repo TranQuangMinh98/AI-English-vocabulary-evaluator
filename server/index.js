@@ -30,13 +30,17 @@ const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
   ...(baseURL ? { baseURL } : {})
 }) : null;
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  ...(process.env.OPENAI_BASE_URL ? { baseURL: process.env.OPENAI_BASE_URL } : {})
+}) : null;
 
 // Surface config at startup to make deployment misconfig obvious in logs.
 console.log('[config] ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'MISSING');
 console.log('[config] ANTHROPIC_BASE_URL:', baseURL || '(default: api.anthropic.com)');
 console.log('[config] ANTHROPIC_MODEL:', process.env.ANTHROPIC_MODEL || '(default)');
 console.log('[config] OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'MISSING');
+console.log('[config] OPENAI_BASE_URL:', process.env.OPENAI_BASE_URL || '(default: api.openai.com)');
 console.log('[config] OPENAI_MODEL:', process.env.OPENAI_MODEL || 'gpt-5-nano');
 
 // Routes

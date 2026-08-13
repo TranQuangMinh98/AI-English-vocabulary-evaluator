@@ -48,7 +48,7 @@ function App() {
     const next = questions[nextIndex];
     const topicChanged = next.topic !== question.topic;
     const nextText = topicChanged
-      ? `Let’s move to our next topic: Hobbies. ${next.question}`
+      ? `Let’s move to our next topic: ${next.topic}. ${next.question}`
       : `${prefix}${prefix ? ' ' : ''}${next.question}`;
 
     setQuestionIndex(nextIndex);
@@ -56,6 +56,7 @@ function App() {
   };
 
   const submitResponse = async (value) => {
+    setShowVoiceHint(false);
     const response = value.trim();
     if (!response || response.length > 2000) {
       setError('Enter a response between 1 and 2,000 characters.');
@@ -63,7 +64,6 @@ function App() {
     }
 
     setError('');
-    setShowVoiceHint(false);
     setIsLoading(true);
 
     try {

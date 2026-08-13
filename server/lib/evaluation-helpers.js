@@ -42,7 +42,7 @@ function parseEvaluationJson(responseText) {
 /**
  * Classify an error thrown while evaluating and send an appropriate response.
  *
- * - Anthropic/API errors carry an HTTP `status`; we forward a sensible client
+ * - Provider API errors carry an HTTP `status`; we forward a sensible client
  *   status and a specific message.
  * - JSON parse failures mean the upstream model returned malformed output (502).
  * - Everything else is a generic 500.
@@ -56,7 +56,7 @@ function parseEvaluationJson(responseText) {
  * @param {string} label - human label for the operation, e.g. "text", "audio"
  */
 function handleEvaluationError(error, res, label) {
-  const status = error?.status; // set by the Anthropic SDK on API errors
+  const status = error?.status;
   const details = error?.message || String(error);
 
   console.error(`[${label} evaluation] ${error?.name || 'Error'}: ${details}`);

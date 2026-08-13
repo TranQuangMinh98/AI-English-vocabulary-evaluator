@@ -1,0 +1,38 @@
+[
+  {
+    "id": "intro-name",
+    "topic": "Basic Introduction",
+    "question": "What is your name?",
+    "inspire": "My name is Alex. It’s nice to meet you."
+  },
+  {
+    "id": "intro-origin",
+    "topic": "Basic Introduction",
+    "question": "Where are you from?",
+    "inspire": "I’m from Hanoi, Vietnam, a lively city with amazing food."
+  },
+  {
+    "id": "intro-work",
+    "topic": "Basic Introduction",
+    "question": "What do you do?",
+    "inspire": "I’m a software developer, and I enjoy creating useful applications."
+  },
+  {
+    "id": "hobby-favorite",
+    "topic": "Hobbies",
+    "question": "What is your favorite hobby?",
+    "inspire": "My favorite hobby is reading, especially mystery novels."
+  },
+  {
+    "id": "hobby-reason",
+    "topic": "Hobbies",
+    "question": "Why do you enjoy it?",
+    "inspire": "I enjoy reading because it helps me relax and discover new ideas."
+  },
+  {
+    "id": "hobby-frequency",
+    "topic": "Hobbies",
+    "question": "How often do you do it?",
+    "inspire": "I read almost every evening and usually finish two books a month."
+  }
+]

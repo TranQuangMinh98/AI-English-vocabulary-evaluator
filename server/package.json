@@ -24,7 +24,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "openai": "^6.15.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

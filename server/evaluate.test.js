@@ -57,32 +57,36 @@ describe('CEFR Evaluation API', () => {
         attributes: {
           complexity: {
             level: 'B2',
-            feedback: 'Good range of vocabulary and sentence structures'
+            feedback: 'Good range of vocabulary and sentence structures',
+            tip: 'Add a precise example.'
           },
           accuracy: {
             level: 'B1',
-            feedback: 'Some grammatical errors present'
+            feedback: 'Some grammatical errors present',
+            tip: 'Check each verb form.'
           },
           fluency: {
             level: 'B2',
-            feedback: 'Text flows well with good cohesion'
+            feedback: 'Text flows well with good cohesion',
+            tip: 'Use another connector.'
           },
           clarity: {
             level: 'C1',
-            feedback: 'Ideas are expressed very clearly'
+            feedback: 'Ideas are expressed very clearly',
+            tip: 'Add one supporting detail.'
           }
         }
       };
 
-      const mockAnthropicClient = {
-        messages: {
+      const mockOpenAIClient = {
+        responses: {
           create: jest.fn().mockResolvedValue({
-            content: [{ text: JSON.stringify(mockResponse) }]
+            output_text: JSON.stringify(mockResponse)
           })
         }
       };
 
-      app.use('/api', createEvaluationRouter(mockAnthropicClient));
+      app.use('/api', createEvaluationRouter(mockOpenAIClient));
 
       const validText = 'word '.repeat(150);
       const response = await request(app)
@@ -100,13 +104,13 @@ describe('CEFR Evaluation API', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      const mockAnthropicClient = {
-        messages: {
+      const mockOpenAIClient = {
+        responses: {
           create: jest.fn().mockRejectedValue(new Error('API Error'))
         }
       };
 
-      app.use('/api', createEvaluationRouter(mockAnthropicClient));
+      app.use('/api', createEvaluationRouter(mockOpenAIClient));
 
       const validText = 'word '.repeat(150);
       const response = await request(app)

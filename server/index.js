@@ -2,9 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { createEvaluationRouter } = require('./routes/evaluate');
 const { createAudioEvaluationRouter } = require('./routes/evaluate-audio');
 const { createSpeakingEvaluationRouter } = require('./routes/evaluate-speaking');
+const { createConversationRouter } = require('./routes/conversation-turn');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,20 +26,24 @@ function normalizeBaseUrl(url) {
 const baseURL = normalizeBaseUrl(process.env.ANTHROPIC_BASE_URL);
 
 // Initialize Anthropic client
-const anthropic = new Anthropic({
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
   ...(baseURL ? { baseURL } : {})
-});
+}) : null;
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 // Surface config at startup to make deployment misconfig obvious in logs.
 console.log('[config] ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'MISSING');
 console.log('[config] ANTHROPIC_BASE_URL:', baseURL || '(default: api.anthropic.com)');
 console.log('[config] ANTHROPIC_MODEL:', process.env.ANTHROPIC_MODEL || '(default)');
+console.log('[config] OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'MISSING');
+console.log('[config] OPENAI_MODEL:', process.env.OPENAI_MODEL || 'gpt-5-nano');
 
 // Routes
-app.use('/api', createEvaluationRouter(anthropic));
+app.use('/api', createEvaluationRouter(openai));
 app.use('/api', createAudioEvaluationRouter(anthropic));
-app.use('/api', createSpeakingEvaluationRouter(anthropic));
+app.use('/api', createSpeakingEvaluationRouter(openai));
+app.use('/api', createConversationRouter(openai));
 
 // Health check
 app.get('/health', (req, res) => {

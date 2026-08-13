@@ -26,6 +26,9 @@ function createAudioEvaluationRouter(anthropicClient) {
 
   router.post('/evaluate-audio', upload.single('audio'), async (req, res) => {
     try {
+      if (!anthropicClient) {
+        return res.status(503).json({ error: 'Claude audio evaluation is not configured' });
+      }
       if (!req.file) {
         return res.status(400).json({ error: 'Audio file is required' });
       }

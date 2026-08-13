@@ -1,167 +1,167 @@
-import { useState } from 'react';
-import TextInputForm from './components/TextInputForm';
-import AudioInputForm from './components/AudioInputForm';
-import LoadingSpinner from './components/LoadingSpinner';
-import EvaluationResult from './components/EvaluationResult';
-import ErrorMessage from './components/ErrorMessage';
+import { useEffect, useRef, useState } from 'react';
+import questions from '../../shared/conversation-questions.json';
+import ConversationFeedback from './components/ConversationFeedback';
+import ConversationInput from './components/ConversationInput';
 
-// In production the client and API share the same origin (see vercel.json),
-// so default to a relative path. VITE_API_URL can override for split hosting.
-// Locally, the Vite dev server proxies /api to the backend (see vite.config.js).
 const API_URL = import.meta.env.VITE_API_URL || '';
+const firstQuestion = { role: 'coach', text: questions[0].question };
 
 function App() {
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [messages, setMessages] = useState([firstQuestion]);
+  const [unrelatedCount, setUnrelatedCount] = useState(0);
+  const [inputMode, setInputMode] = useState('text');
+  const [textDraft, setTextDraft] = useState('');
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [showVoiceHint, setShowVoiceHint] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [submittedText, setSubmittedText] = useState('');
-  const [evaluationMode, setEvaluationMode] = useState('text'); // 'text' or 'speaking'
+  const [error, setError] = useState('');
+  const [complete, setComplete] = useState(false);
+  const messageListRef = useRef(null);
+  const question = questions[questionIndex];
 
-  const handleSubmit = async (text) => {
+  useEffect(() => {
+    messageListRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
+  }, [messages]);
+
+  const reset = () => {
+    setQuestionIndex(0);
+    setMessages([firstQuestion]);
+    setUnrelatedCount(0);
+    setInputMode('text');
+    setTextDraft('');
+    setVoiceTranscript('');
+    setShowVoiceHint(false);
+    setIsLoading(false);
+    setError('');
+    setComplete(false);
+  };
+
+  const moveForward = (nextMessages, prefix = '') => {
+    const nextIndex = questionIndex + 1;
+    if (nextIndex >= questions.length) {
+      setMessages([...nextMessages, { role: 'coach', text: 'Let’s finish here. Thanks for practicing with me today!' }]);
+      setComplete(true);
+      return;
+    }
+
+    const next = questions[nextIndex];
+    const topicChanged = next.topic !== question.topic;
+    const nextText = topicChanged
+      ? `Let’s move to our next topic: Hobbies. ${next.question}`
+      : `${prefix}${prefix ? ' ' : ''}${next.question}`;
+
+    setQuestionIndex(nextIndex);
+    setMessages([...nextMessages, { role: 'coach', text: nextText }]);
+  };
+
+  const submitResponse = async (value) => {
+    const response = value.trim();
+    if (!response || response.length > 2000) {
+      setError('Enter a response between 1 and 2,000 characters.');
+      return;
+    }
+
+    setError('');
+    setShowVoiceHint(false);
     setIsLoading(true);
-    setError(null);
-    setResult(null);
-    setSubmittedText(text);
 
     try {
-      const response = await fetch(`${API_URL}/api/evaluate`, {
+      const apiResponse = await fetch(`${API_URL}/api/conversation-turn`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: question.id, response, inputMode })
       });
+      const data = await apiResponse.json();
+      if (!apiResponse.ok) throw new Error(data.error || 'The answer could not be evaluated. Try again.');
 
-      const data = await response.json();
+      const learnerMessage = { role: 'learner', text: response, inputMode };
+      const nextMessages = [...messages, data.aligned ? { ...learnerMessage, evaluation: data.evaluation } : learnerMessage];
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to evaluate text');
+      setTextDraft('');
+      setVoiceTranscript('');
+
+      if (!data.aligned) {
+        if (unrelatedCount === 0) {
+          setMessages([...nextMessages, {
+            role: 'coach',
+            text: `That’s great, but we’re currently talking about ${question.topic}. Let’s get back on track: ${question.question}`
+          }]);
+          setUnrelatedCount(1);
+        } else {
+          setUnrelatedCount(0);
+          moveForward(nextMessages, 'Let’s move to the next question:');
+        }
+        return;
       }
 
-      setResult(data);
-    } catch (err) {
-      console.error('Evaluation error:', err);
-      setError(err.message || 'We couldn\'t evaluate your text right now. Please try again.');
+      setUnrelatedCount(0);
+      moveForward([...nextMessages, { role: 'coach', text: data.acknowledgment }]);
+    } catch (requestError) {
+      setError(requestError.message || 'The answer could not be evaluated. Try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAudioSubmit = async (transcript) => {
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-    setSubmittedText(transcript);
-
-    try {
-      const response = await fetch(`${API_URL}/api/evaluate-speaking`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ transcript }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to evaluate speaking');
-      }
-
-      setResult(data);
-    } catch (err) {
-      console.error('Speaking evaluation error:', err);
-      setError(err.message || 'We couldn\'t evaluate your speaking right now. Please try again.');
-    } finally {
-      setIsLoading(false);
+  const handleInspire = () => {
+    if (inputMode === 'text') {
+      setTextDraft(question.inspire);
+      return;
     }
-  };
-
-  const handleRetry = () => {
-    if (submittedText) {
-      handleSubmit(submittedText);
-    } else {
-      setError(null);
-    }
-  };
-
-  const handleEvaluateAnother = () => {
-    setResult(null);
-    setError(null);
-    setSubmittedText('');
-  };
-
-  const handleModeChange = (mode) => {
-    setEvaluationMode(mode);
-    setResult(null);
-    setError(null);
-    setSubmittedText('');
+    setShowVoiceHint(current => !current);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center">
-            CEFR English Evaluator
-          </h1>
-          <p className="mt-2 text-base sm:text-lg text-gray-600 text-center">
-            {evaluationMode === 'text'
-              ? 'Get instant feedback on your English writing across Complexity, Accuracy, Fluency, and Clarity based on CEFR standards (A1-C2)'
-              : 'Get instant feedback on your English speaking across Complexity, Accuracy, Fluency, and Pronunciation based on CEFR standards (A1-C2)'
-            }
-          </p>
-
-          {/* Mode Switcher */}
-          <div className="flex justify-center mt-6 gap-4">
-            <button
-              onClick={() => handleModeChange('text')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                evaluationMode === 'text'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Text Evaluation
-            </button>
-            <button
-              onClick={() => handleModeChange('speaking')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                evaluationMode === 'speaking'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Speaking Evaluation
-            </button>
-          </div>
-        </div>
+    <div className="app-shell">
+      <header className="site-header">
+        <p className="eyebrow">Six questions · two everyday topics</p>
+        <h1>English Conversation Coach</h1>
+        <p>Practice real conversations and receive CEFR feedback on every answer.</p>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {!result && !isLoading && !error && (
-          <div className="bg-white rounded-lg shadow-md p-6 sm:p-8">
-            {evaluationMode === 'text' ? (
-              <TextInputForm onSubmit={handleSubmit} isLoading={isLoading} />
-            ) : (
-              <AudioInputForm onSubmit={handleAudioSubmit} isLoading={isLoading} />
-            )}
+      <main className="conversation-layout">
+        <section className="conversation-card" aria-labelledby="current-topic">
+          <div className="conversation-heading">
+            <div>
+              <p>Current topic</p>
+              <h2 id="current-topic">{complete ? 'Conversation complete' : question.topic}</h2>
+            </div>
+            <span>{complete ? '6 of 6' : `${questionIndex + 1} of ${questions.length}`}</span>
           </div>
-        )}
 
-        {isLoading && <LoadingSpinner />}
+          <div ref={messageListRef} className="message-list" aria-live="polite">
+            {messages.map((message, index) => (
+              <article key={`${index}-${message.text}`} className={`message ${message.role}`}>
+                <p className="message-author">{message.role === 'coach' ? 'Coach' : 'You'}</p>
+                <p>{message.text}</p>
+                {message.evaluation && <ConversationFeedback evaluation={message.evaluation} inputMode={message.inputMode} />}
+              </article>
+            ))}
+          </div>
 
-        {error && <ErrorMessage message={error} onRetry={handleRetry} />}
-
-        {result && <EvaluationResult result={result} onEvaluateAnother={handleEvaluateAnother} evaluationMode={evaluationMode} />}
+          {complete ? (
+            <div className="completion-actions">
+              <button type="button" className="send-button" onClick={reset}>Start Again</button>
+            </div>
+          ) : (
+            <ConversationInput
+              inputMode={inputMode}
+              onInputModeChange={setInputMode}
+              textDraft={textDraft}
+              onTextChange={setTextDraft}
+              voiceTranscript={voiceTranscript}
+              onVoiceChange={setVoiceTranscript}
+              inspire={question.inspire}
+              showVoiceHint={showVoiceHint}
+              onInspire={handleInspire}
+              onSubmit={submitResponse}
+              isLoading={isLoading}
+              error={error}
+            />
+          )}
+        </section>
       </main>
-
-      {/* Footer */}
-      <footer className="mt-auto py-6 text-center text-gray-600 text-sm">
-        Build and Design by Mivaroku
-      </footer>
     </div>
   );
 }

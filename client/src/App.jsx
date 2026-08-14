@@ -4,41 +4,80 @@ import ConversationFeedback from './components/ConversationFeedback';
 import ConversationInput from './components/ConversationInput';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
-const firstQuestion = { role: 'coach', text: questions[0].question };
+const INTRO_DELAY = 450;
+const FIRST_QUESTION_DELAY = 700;
+const NEXT_QUESTION_DELAY = 650;
+const introduction = { role: 'coach', text: 'Hi, I’m Alex, your English conversation coach. Let’s practice together.' };
+const initialMessages = [
+  introduction,
+  { role: 'coach', text: questions[0].question }
+];
 
 function App() {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [messages, setMessages] = useState([firstQuestion]);
+  const [messages, setMessages] = useState([]);
+  const [pendingMessage, setPendingMessage] = useState(null);
   const [conversationResponses, setConversationResponses] = useState([]);
   const [unrelatedCount, setUnrelatedCount] = useState(0);
   const [inputMode, setInputMode] = useState('text');
   const [textDraft, setTextDraft] = useState('');
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [showVoiceHint, setShowVoiceHint] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+  const [introRun, setIntroRun] = useState(0);
   const [error, setError] = useState('');
   const [complete, setComplete] = useState(false);
   const [finalEvaluation, setFinalEvaluation] = useState(null);
   const messageListRef = useRef(null);
+  const nextQuestionTimerRef = useRef(null);
   const question = questions[questionIndex];
+  const displayedMessages = pendingMessage ? [...messages, pendingMessage] : messages;
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer;
+    const wait = (duration) => new Promise(resolve => { timer = setTimeout(resolve, duration); });
+
+    (async () => {
+      await wait(INTRO_DELAY);
+      if (cancelled) return;
+      setMessages([introduction]);
+      await wait(FIRST_QUESTION_DELAY);
+      if (cancelled) return;
+      setMessages(initialMessages);
+      setIsReady(true);
+      setIsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [introRun]);
 
   useEffect(() => {
     messageListRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
-  }, [messages]);
+  }, [messages, pendingMessage, isLoading]);
+
+  useEffect(() => () => clearTimeout(nextQuestionTimerRef.current), []);
 
   const reset = () => {
     setQuestionIndex(0);
-    setMessages([firstQuestion]);
+    setMessages([]);
+    setPendingMessage(null);
     setConversationResponses([]);
     setUnrelatedCount(0);
     setInputMode('text');
     setTextDraft('');
     setVoiceTranscript('');
     setShowVoiceHint(false);
-    setIsLoading(false);
+    setIsLoading(true);
+    setIsReady(false);
     setError('');
     setComplete(false);
     setFinalEvaluation(null);
+    setIntroRun(current => current + 1);
   };
 
   const requestFeedback = async (responses) => {
@@ -54,13 +93,19 @@ function App() {
 
   const moveForward = async (nextMessages, nextResponses, prefix = '') => {
     const nextIndex = questionIndex + 1;
+    setMessages(nextMessages);
+    setConversationResponses(nextResponses);
+
     if (nextIndex >= questions.length) {
       setMessages([...nextMessages, { role: 'coach', text: 'Let’s finish here. Thanks for practicing with me today!' }]);
-      setConversationResponses(nextResponses);
       setComplete(true);
       await requestFeedback(nextResponses);
       return;
     }
+
+    await new Promise(resolve => {
+      nextQuestionTimerRef.current = setTimeout(resolve, NEXT_QUESTION_DELAY);
+    });
 
     const next = questions[nextIndex];
     const topicChanged = next.topic !== question.topic;
@@ -70,7 +115,6 @@ function App() {
 
     setQuestionIndex(nextIndex);
     setMessages([...nextMessages, { role: 'coach', text: nextText }]);
-    setConversationResponses(nextResponses);
   };
 
   const submitResponse = async (value) => {
@@ -83,6 +127,7 @@ function App() {
 
     setError('');
     setIsLoading(true);
+    setPendingMessage({ role: 'learner', text: response, inputMode });
 
     try {
       const apiResponse = await fetch(`${API_URL}/api/conversation-turn`, {
@@ -92,6 +137,7 @@ function App() {
       });
       const data = await apiResponse.json();
       if (!apiResponse.ok) throw new Error(data.error || 'The response could not be processed. Try again.');
+      setPendingMessage(null);
 
       const learnerMessage = { role: 'learner', text: response, inputMode };
       const nextMessages = [...messages, learnerMessage];
@@ -121,6 +167,7 @@ function App() {
     } catch (requestError) {
       setError(requestError.message || 'The response could not be processed. Try again.');
     } finally {
+      setPendingMessage(null);
       setIsLoading(false);
     }
   };
@@ -164,18 +211,24 @@ function App() {
           </div>
 
           <div ref={messageListRef} className="message-list" aria-live="polite">
-            {messages.map((message, index) => (
+            {displayedMessages.map((message, index) => (
               <article key={`${index}-${message.text}`} className={`message ${message.role}`}>
-                <p className="message-author">{message.role === 'coach' ? 'Coach' : 'You'}</p>
+                <p className="message-author">{message.role === 'coach' ? 'Alex' : 'You'}</p>
                 <p>{message.text}</p>
               </article>
             ))}
+            {isLoading && (
+              <article className="message coach thinking-message">
+                <p className="message-author" aria-hidden="true">Alex</p>
+                <p>Alex is thinking<span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span></p>
+              </article>
+            )}
           </div>
 
           {complete ? (
             <div className="completion-actions">
               {finalEvaluation ? <ConversationFeedback evaluation={finalEvaluation} /> : (
-                <>
+                !isLoading && <>
                   <p className="input-error" role="alert">{error || 'Feedback is not available yet.'}</p>
                   <button type="button" className="quiet-button" onClick={retryFeedback} disabled={isLoading}>
                     {isLoading ? 'Working…' : 'Retry feedback'}
@@ -184,7 +237,7 @@ function App() {
               )}
               <button type="button" className="send-button" onClick={reset} disabled={isLoading}>Start Again</button>
             </div>
-          ) : (
+          ) : isReady ? (
             <ConversationInput
               inputMode={inputMode}
               onInputModeChange={setInputMode}
@@ -199,7 +252,7 @@ function App() {
               isLoading={isLoading}
               error={error}
             />
-          )}
+          ) : null}
         </section>
       </main>
     </div>

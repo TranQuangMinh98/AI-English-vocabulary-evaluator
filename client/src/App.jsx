@@ -4,11 +4,15 @@ import ConversationFeedback from './components/ConversationFeedback';
 import ConversationInput from './components/ConversationInput';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
-const firstQuestion = { role: 'coach', text: questions[0].question };
+const initialMessages = [
+  { role: 'coach', text: 'Hi, I’m Alex, your English conversation coach. Let’s practice together.' },
+  { role: 'coach', text: questions[0].question }
+];
 
 function App() {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [messages, setMessages] = useState([firstQuestion]);
+  const [messages, setMessages] = useState(initialMessages);
+  const [pendingMessage, setPendingMessage] = useState(null);
   const [conversationResponses, setConversationResponses] = useState([]);
   const [unrelatedCount, setUnrelatedCount] = useState(0);
   const [inputMode, setInputMode] = useState('text');
@@ -21,14 +25,16 @@ function App() {
   const [finalEvaluation, setFinalEvaluation] = useState(null);
   const messageListRef = useRef(null);
   const question = questions[questionIndex];
+  const displayedMessages = pendingMessage ? [...messages, pendingMessage] : messages;
 
   useEffect(() => {
     messageListRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
-  }, [messages]);
+  }, [messages, pendingMessage, isLoading]);
 
   const reset = () => {
     setQuestionIndex(0);
-    setMessages([firstQuestion]);
+    setMessages(initialMessages);
+    setPendingMessage(null);
     setConversationResponses([]);
     setUnrelatedCount(0);
     setInputMode('text');
@@ -83,6 +89,7 @@ function App() {
 
     setError('');
     setIsLoading(true);
+    setPendingMessage({ role: 'learner', text: response, inputMode });
 
     try {
       const apiResponse = await fetch(`${API_URL}/api/conversation-turn`, {
@@ -92,6 +99,7 @@ function App() {
       });
       const data = await apiResponse.json();
       if (!apiResponse.ok) throw new Error(data.error || 'The response could not be processed. Try again.');
+      setPendingMessage(null);
 
       const learnerMessage = { role: 'learner', text: response, inputMode };
       const nextMessages = [...messages, learnerMessage];
@@ -121,6 +129,7 @@ function App() {
     } catch (requestError) {
       setError(requestError.message || 'The response could not be processed. Try again.');
     } finally {
+      setPendingMessage(null);
       setIsLoading(false);
     }
   };
@@ -164,18 +173,24 @@ function App() {
           </div>
 
           <div ref={messageListRef} className="message-list" aria-live="polite">
-            {messages.map((message, index) => (
+            {displayedMessages.map((message, index) => (
               <article key={`${index}-${message.text}`} className={`message ${message.role}`}>
-                <p className="message-author">{message.role === 'coach' ? 'Coach' : 'You'}</p>
+                <p className="message-author">{message.role === 'coach' ? 'Alex' : 'You'}</p>
                 <p>{message.text}</p>
               </article>
             ))}
+            {isLoading && (
+              <article className="message coach thinking-message" role="status" aria-label="Alex is thinking">
+                <p className="message-author">Alex</p>
+                <p>Alex is thinking<span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span></p>
+              </article>
+            )}
           </div>
 
           {complete ? (
             <div className="completion-actions">
               {finalEvaluation ? <ConversationFeedback evaluation={finalEvaluation} /> : (
-                <>
+                !isLoading && <>
                   <p className="input-error" role="alert">{error || 'Feedback is not available yet.'}</p>
                   <button type="button" className="quiet-button" onClick={retryFeedback} disabled={isLoading}>
                     {isLoading ? 'Working…' : 'Retry feedback'}

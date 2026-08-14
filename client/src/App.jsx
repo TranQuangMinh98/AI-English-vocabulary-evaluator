@@ -180,8 +180,8 @@ function App() {
               </article>
             ))}
             {isLoading && (
-              <article className="message coach thinking-message" role="status" aria-label="Alex is thinking">
-                <p className="message-author">Alex</p>
+              <article className="message coach thinking-message">
+                <p className="message-author" aria-hidden="true">Alex</p>
                 <p>Alex is thinking<span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span></p>
               </article>
             )}

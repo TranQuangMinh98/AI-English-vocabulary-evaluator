@@ -162,7 +162,7 @@ function ConversationInput({
             )}
           </div>
           <button type="submit" className="send-button" disabled={isLoading || isRecording}>
-            {isLoading ? 'Evaluating…' : 'Send answer'}
+            {isLoading ? 'Working…' : 'Send answer'}
           </button>
         </div>
       </form>

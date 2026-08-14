@@ -9,6 +9,7 @@ const firstQuestion = { role: 'coach', text: questions[0].question };
 function App() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [messages, setMessages] = useState([firstQuestion]);
+  const [conversationResponses, setConversationResponses] = useState([]);
   const [unrelatedCount, setUnrelatedCount] = useState(0);
   const [inputMode, setInputMode] = useState('text');
   const [textDraft, setTextDraft] = useState('');
@@ -17,6 +18,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [complete, setComplete] = useState(false);
+  const [finalEvaluation, setFinalEvaluation] = useState(null);
   const messageListRef = useRef(null);
   const question = questions[questionIndex];
 
@@ -27,6 +29,7 @@ function App() {
   const reset = () => {
     setQuestionIndex(0);
     setMessages([firstQuestion]);
+    setConversationResponses([]);
     setUnrelatedCount(0);
     setInputMode('text');
     setTextDraft('');
@@ -35,12 +38,23 @@ function App() {
     setIsLoading(false);
     setError('');
     setComplete(false);
+    setFinalEvaluation(null);
   };
 
-  const moveForward = (nextMessages, prefix = '') => {
+  const moveForward = async (nextMessages, nextResponses, prefix = '') => {
     const nextIndex = questionIndex + 1;
     if (nextIndex >= questions.length) {
+      const feedbackResponse = await fetch(`${API_URL}/api/conversation-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ responses: nextResponses })
+      });
+      const feedback = await feedbackResponse.json();
+      if (!feedbackResponse.ok) throw new Error(feedback.error || 'The conversation could not be evaluated. Try again.');
+
       setMessages([...nextMessages, { role: 'coach', text: 'Let’s finish here. Thanks for practicing with me today!' }]);
+      setConversationResponses(nextResponses);
+      setFinalEvaluation(feedback.evaluation);
       setComplete(true);
       return;
     }
@@ -53,6 +67,7 @@ function App() {
 
     setQuestionIndex(nextIndex);
     setMessages([...nextMessages, { role: 'coach', text: nextText }]);
+    setConversationResponses(nextResponses);
   };
 
   const submitResponse = async (value) => {
@@ -73,13 +88,11 @@ function App() {
         body: JSON.stringify({ questionId: question.id, response, inputMode })
       });
       const data = await apiResponse.json();
-      if (!apiResponse.ok) throw new Error(data.error || 'The answer could not be evaluated. Try again.');
+      if (!apiResponse.ok) throw new Error(data.error || 'The response could not be processed. Try again.');
 
       const learnerMessage = { role: 'learner', text: response, inputMode };
-      const nextMessages = [...messages, data.aligned ? { ...learnerMessage, evaluation: data.evaluation } : learnerMessage];
-
-      setTextDraft('');
-      setVoiceTranscript('');
+      const nextMessages = [...messages, learnerMessage];
+      const nextResponses = [...conversationResponses, { questionId: question.id, response, inputMode }];
 
       if (!data.aligned) {
         if (unrelatedCount === 0) {
@@ -87,18 +100,23 @@ function App() {
             role: 'coach',
             text: `That’s great, but we’re currently talking about ${question.topic}. Let’s get back on track: ${question.question}`
           }]);
+          setConversationResponses(nextResponses);
           setUnrelatedCount(1);
         } else {
+          await moveForward(nextMessages, nextResponses, 'Let’s move to the next question:');
           setUnrelatedCount(0);
-          moveForward(nextMessages, 'Let’s move to the next question:');
         }
+        setTextDraft('');
+        setVoiceTranscript('');
         return;
       }
 
+      await moveForward([...nextMessages, { role: 'coach', text: data.acknowledgment }], nextResponses);
       setUnrelatedCount(0);
-      moveForward([...nextMessages, { role: 'coach', text: data.acknowledgment }]);
+      setTextDraft('');
+      setVoiceTranscript('');
     } catch (requestError) {
-      setError(requestError.message || 'The answer could not be evaluated. Try again.');
+      setError(requestError.message || 'The response could not be processed. Try again.');
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +135,7 @@ function App() {
       <header className="site-header">
         <p className="eyebrow">Six questions · two everyday topics</p>
         <h1>English Conversation Coach</h1>
-        <p>Practice real conversations and receive CEFR feedback on every answer.</p>
+        <p>Practice real conversations and receive CEFR feedback when you finish.</p>
       </header>
 
       <main className="conversation-layout">
@@ -135,13 +153,13 @@ function App() {
               <article key={`${index}-${message.text}`} className={`message ${message.role}`}>
                 <p className="message-author">{message.role === 'coach' ? 'Coach' : 'You'}</p>
                 <p>{message.text}</p>
-                {message.evaluation && <ConversationFeedback evaluation={message.evaluation} inputMode={message.inputMode} />}
               </article>
             ))}
           </div>
 
           {complete ? (
             <div className="completion-actions">
+              <ConversationFeedback evaluation={finalEvaluation} />
               <button type="button" className="send-button" onClick={reset}>Start Again</button>
             </div>
           ) : (

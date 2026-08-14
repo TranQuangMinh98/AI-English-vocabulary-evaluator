@@ -13,7 +13,7 @@ Conversation follows six fixed questions:
 5. Why do you enjoy it?
 6. How often do you do it?
 
-Learners can type or use browser speech recognition. Each topic-aligned response receives four-attribute CEFR feedback. An unrelated response redirects once; a second consecutive unrelated response skips to the next question. Browser refresh and **Start Again** clear all history.
+Learners can type or use browser speech recognition. The complete Conversation receives one four-attribute CEFR evaluation after it ends. An unrelated response redirects once; a second consecutive unrelated response skips to the next question. Browser refresh and **Start Again** clear all history.
 
 ## Setup
 
@@ -66,16 +66,7 @@ Aligned response:
 ```json
 {
   "aligned": true,
-  "acknowledgment": "Nice to meet you, Minh.",
-  "evaluation": {
-    "overall": { "level": "A2", "explanation": "..." },
-    "attributes": {
-      "complexity": { "level": "A2", "feedback": "...", "tip": "..." },
-      "accuracy": { "level": "A2", "feedback": "...", "tip": "..." },
-      "fluency": { "level": "A2", "feedback": "...", "tip": "..." },
-      "clarity": { "level": "A2", "feedback": "...", "tip": "..." }
-    }
-  }
+  "acknowledgment": "Nice to meet you, Minh."
 }
 ```
 
@@ -83,6 +74,19 @@ Unrelated response:
 
 ```json
 { "aligned": false }
+```
+
+### `POST /api/conversation-feedback`
+
+Send the collected learner responses after the Conversation ends. The endpoint returns one CEFR evaluation covering all responses.
+
+```json
+{
+  "responses": [
+    { "questionId": "intro-name", "response": "My name is Minh.", "inputMode": "text" },
+    { "questionId": "intro-origin", "response": "I am from Vietnam.", "inputMode": "voice" }
+  ]
+}
 ```
 
 Existing `POST /api/evaluate` and `POST /api/evaluate-speaking` contracts remain available, now backed by OpenAI. `POST /api/evaluate-audio` remains Claude-backed.

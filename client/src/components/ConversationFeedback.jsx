@@ -1,11 +1,11 @@
 import CEFRProgressBar from './CEFRProgressBar';
 
-function ConversationFeedback({ evaluation, inputMode }) {
+function ConversationFeedback({ evaluation }) {
   const attributes = [
     ['complexity', 'Complexity'],
     ['accuracy', 'Accuracy'],
     ['fluency', 'Fluency'],
-    [inputMode === 'voice' ? 'pronunciation' : 'clarity', inputMode === 'voice' ? 'Pronunciation' : 'Clarity']
+    ['clarity', 'Clarity']
   ];
 
   return (

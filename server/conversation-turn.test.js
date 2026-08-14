@@ -28,28 +28,27 @@ function modelResponse(body) {
 }
 
 describe('POST /api/conversation-turn', () => {
-  it('returns an evaluation for a topic-aligned response', async () => {
-    const response = await request(appWith(modelResponse({
+  it('returns alignment and acknowledgment without evaluating an aligned response', async () => {
+    const client = modelResponse({
       aligned: true,
-      acknowledgment: 'Nice to meet you, Minh.',
-      evaluation
-    })))
+      acknowledgment: 'Nice to meet you, Minh.'
+    });
+    const response = await request(appWith(client))
       .post('/api/conversation-turn')
       .send({ questionId: 'intro-name', response: 'Minh', inputMode: 'text' });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       aligned: true,
-      acknowledgment: 'Nice to meet you, Minh.',
-      evaluation
+      acknowledgment: 'Nice to meet you, Minh.'
     });
+    expect(client.responses.create.mock.calls[0][0].text.format.schema.properties).not.toHaveProperty('evaluation');
   });
 
   it('returns only alignment for an unrelated response', async () => {
     const response = await request(appWith(modelResponse({
       aligned: false,
-      acknowledgment: null,
-      evaluation: null
+      acknowledgment: null
     })))
       .post('/api/conversation-turn')
       .send({ questionId: 'intro-origin', response: 'I like football.', inputMode: 'text' });
@@ -67,7 +66,7 @@ describe('POST /api/conversation-turn', () => {
     [{ questionId: 'intro-name', response: 'x'.repeat(2001), inputMode: 'text' }],
     [{ questionId: 'intro-name', response: 'Minh', inputMode: 'audio' }]
   ])('rejects invalid input without calling the model', async (body) => {
-    const client = modelResponse({ aligned: false, acknowledgment: null, evaluation: null });
+    const client = modelResponse({ aligned: false, acknowledgment: null });
     const response = await request(appWith(client)).post('/api/conversation-turn').send(body);
 
     expect(response.status).toBe(400);
@@ -85,8 +84,7 @@ describe('POST /api/conversation-turn', () => {
   it('returns 502 when model output is incomplete', async () => {
     const response = await request(appWith(modelResponse({
       aligned: true,
-      acknowledgment: '',
-      evaluation
+      acknowledgment: ''
     })))
       .post('/api/conversation-turn')
       .send({ questionId: 'intro-name', response: 'Minh', inputMode: 'text' });
@@ -94,18 +92,58 @@ describe('POST /api/conversation-turn', () => {
     expect(response.status).toBe(502);
   });
 
+});
+
+describe('POST /api/conversation-feedback', () => {
+  const conversation = [
+    { questionId: 'intro-name', response: 'Minh', inputMode: 'text' },
+    { questionId: 'intro-origin', response: 'I am from Vietnam.', inputMode: 'voice' }
+  ];
+
+  it('returns one evaluation for the complete conversation', async () => {
+    const client = modelResponse(evaluation);
+    const response = await request(appWith(client))
+      .post('/api/conversation-feedback')
+      .send({ responses: conversation });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ evaluation });
+    const prompt = client.responses.create.mock.calls[0][0].input.find(message => message.role === 'user').content;
+    expect(prompt).toContain('Learner response: Minh');
+    expect(prompt).toContain('Learner response: I am from Vietnam.');
+  });
+
+  it.each([
+    [undefined],
+    [{ responses: [] }],
+    [{ responses: [{ questionId: 'missing', response: 'Minh', inputMode: 'text' }] }],
+    [{ responses: [{ questionId: 'intro-name', response: ' ', inputMode: 'text' }] }],
+    [{ responses: [{ questionId: 'intro-name', response: 'x'.repeat(2001), inputMode: 'text' }] }],
+    [{ responses: [{ questionId: 'intro-name', response: 'Minh', inputMode: 'audio' }] }]
+  ])('rejects invalid conversation without calling the model', async (body) => {
+    const client = modelResponse(evaluation);
+    const response = await request(appWith(client)).post('/api/conversation-feedback').send(body);
+
+    expect(response.status).toBe(400);
+    expect(client.responses.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when OpenAI is not configured', async () => {
+    const response = await request(appWith(null))
+      .post('/api/conversation-feedback')
+      .send({ responses: conversation });
+
+    expect(response.status).toBe(503);
+  });
+
   it('returns 502 when overall level is not the lowest attribute level', async () => {
     const invalidEvaluation = {
       ...evaluation,
       overall: { ...evaluation.overall, level: 'C2' }
     };
-    const response = await request(appWith(modelResponse({
-      aligned: true,
-      acknowledgment: 'Nice to meet you, Minh.',
-      evaluation: invalidEvaluation
-    })))
-      .post('/api/conversation-turn')
-      .send({ questionId: 'intro-name', response: 'Minh', inputMode: 'text' });
+    const response = await request(appWith(modelResponse(invalidEvaluation)))
+      .post('/api/conversation-feedback')
+      .send({ responses: conversation });
 
     expect(response.status).toBe(502);
   });

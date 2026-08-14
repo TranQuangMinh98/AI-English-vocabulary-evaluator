@@ -97,7 +97,11 @@ describe('POST /api/conversation-turn', () => {
 describe('POST /api/conversation-feedback', () => {
   const conversation = [
     { questionId: 'intro-name', response: 'Minh', inputMode: 'text' },
-    { questionId: 'intro-origin', response: 'I am from Vietnam.', inputMode: 'voice' }
+    { questionId: 'intro-origin', response: 'I am from Vietnam.', inputMode: 'voice' },
+    { questionId: 'intro-work', response: 'I am a developer.', inputMode: 'text' },
+    { questionId: 'hobby-favorite', response: 'I enjoy reading.', inputMode: 'text' },
+    { questionId: 'hobby-reason', response: 'It helps me relax.', inputMode: 'text' },
+    { questionId: 'hobby-frequency', response: 'I read every evening.', inputMode: 'text' }
   ];
 
   it('returns one evaluation for the complete conversation', async () => {
@@ -116,6 +120,9 @@ describe('POST /api/conversation-feedback', () => {
   it.each([
     [undefined],
     [{ responses: [] }],
+    [{ responses: conversation.slice(0, 5) }],
+    [{ responses: [conversation[1], conversation[0], ...conversation.slice(2)] }],
+    [{ responses: [conversation[0], conversation[0], conversation[0], ...conversation.slice(1)] }],
     [{ responses: [{ questionId: 'missing', response: 'Minh', inputMode: 'text' }] }],
     [{ responses: [{ questionId: 'intro-name', response: ' ', inputMode: 'text' }] }],
     [{ responses: [{ questionId: 'intro-name', response: 'x'.repeat(2001), inputMode: 'text' }] }],

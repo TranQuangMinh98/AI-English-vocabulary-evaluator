@@ -78,16 +78,22 @@ Unrelated response:
 
 ### `POST /api/conversation-feedback`
 
-Send the collected learner responses after the Conversation ends. The endpoint returns one CEFR evaluation covering all responses.
+Send the collected learner responses after the Conversation ends. Include every fixed question in order, with one response or two consecutive attempts per question. The endpoint returns one CEFR evaluation covering all responses.
 
 ```json
 {
   "responses": [
     { "questionId": "intro-name", "response": "My name is Minh.", "inputMode": "text" },
-    { "questionId": "intro-origin", "response": "I am from Vietnam.", "inputMode": "voice" }
+    { "questionId": "intro-origin", "response": "I am from Vietnam.", "inputMode": "voice" },
+    { "questionId": "intro-work", "response": "I am a developer.", "inputMode": "text" },
+    { "questionId": "hobby-favorite", "response": "I enjoy reading.", "inputMode": "text" },
+    { "questionId": "hobby-reason", "response": "It helps me relax.", "inputMode": "text" },
+    { "questionId": "hobby-frequency", "response": "I read every evening.", "inputMode": "text" }
   ]
 }
 ```
+
+Response: `{ "evaluation": { "overall": { "level": "A2", "explanation": "..." }, "attributes": { "complexity": {}, "accuracy": {}, "fluency": {}, "clarity": {} } } }`
 
 Existing `POST /api/evaluate` and `POST /api/evaluate-speaking` contracts remain available, now backed by OpenAI. `POST /api/evaluate-audio` remains Claude-backed.
 

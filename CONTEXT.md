@@ -37,7 +37,7 @@ A Learner Response that does not address the current question or its Topic.
 _Avoid_: Invalid response, wrong answer
 
 **Evaluation**:
-A CEFR assessment of complexity, accuracy, fluency, and clarity or pronunciation, produced for a Topic-Aligned Response by the existing evaluator.
+One CEFR assessment of complexity, accuracy, fluency, and clarity, produced from all Learner Responses after the Conversation ends.
 _Avoid_: Conversation reply, score
 
 **Input Mode**:

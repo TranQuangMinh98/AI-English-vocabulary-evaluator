@@ -406,8 +406,9 @@ button:disabled {
 }
 
 .completion-actions {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
   padding: 1.5rem;
   border-top: 1px solid #e1e6ef;
   background: #f4f6fb;

@@ -12,7 +12,6 @@ const initialMessages = [
   introduction,
   { role: 'coach', text: questions[0].question }
 ];
-const pause = (duration) => new Promise(resolve => setTimeout(resolve, duration));
 
 function App() {
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -31,6 +30,7 @@ function App() {
   const [complete, setComplete] = useState(false);
   const [finalEvaluation, setFinalEvaluation] = useState(null);
   const messageListRef = useRef(null);
+  const nextQuestionTimerRef = useRef(null);
   const question = questions[questionIndex];
   const displayedMessages = pendingMessage ? [...messages, pendingMessage] : messages;
 
@@ -59,6 +59,8 @@ function App() {
   useEffect(() => {
     messageListRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
   }, [messages, pendingMessage, isLoading]);
+
+  useEffect(() => () => clearTimeout(nextQuestionTimerRef.current), []);
 
   const reset = () => {
     setQuestionIndex(0);
@@ -93,7 +95,6 @@ function App() {
     const nextIndex = questionIndex + 1;
     setMessages(nextMessages);
     setConversationResponses(nextResponses);
-    await pause(NEXT_QUESTION_DELAY);
 
     if (nextIndex >= questions.length) {
       setMessages([...nextMessages, { role: 'coach', text: 'Let’s finish here. Thanks for practicing with me today!' }]);
@@ -101,6 +102,10 @@ function App() {
       await requestFeedback(nextResponses);
       return;
     }
+
+    await new Promise(resolve => {
+      nextQuestionTimerRef.current = setTimeout(resolve, NEXT_QUESTION_DELAY);
+    });
 
     const next = questions[nextIndex];
     const topicChanged = next.topic !== question.topic;

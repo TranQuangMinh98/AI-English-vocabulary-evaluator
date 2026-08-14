@@ -41,21 +41,24 @@ function App() {
     setFinalEvaluation(null);
   };
 
+  const requestFeedback = async (responses) => {
+    const feedbackResponse = await fetch(`${API_URL}/api/conversation-feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responses })
+    });
+    const feedback = await feedbackResponse.json();
+    if (!feedbackResponse.ok) throw new Error(feedback.error || 'The conversation could not be evaluated. Try again.');
+    setFinalEvaluation(feedback.evaluation);
+  };
+
   const moveForward = async (nextMessages, nextResponses, prefix = '') => {
     const nextIndex = questionIndex + 1;
     if (nextIndex >= questions.length) {
-      const feedbackResponse = await fetch(`${API_URL}/api/conversation-feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ responses: nextResponses })
-      });
-      const feedback = await feedbackResponse.json();
-      if (!feedbackResponse.ok) throw new Error(feedback.error || 'The conversation could not be evaluated. Try again.');
-
       setMessages([...nextMessages, { role: 'coach', text: 'Let’s finish here. Thanks for practicing with me today!' }]);
       setConversationResponses(nextResponses);
-      setFinalEvaluation(feedback.evaluation);
       setComplete(true);
+      await requestFeedback(nextResponses);
       return;
     }
 
@@ -122,6 +125,18 @@ function App() {
     }
   };
 
+  const retryFeedback = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await requestFeedback(conversationResponses);
+    } catch (requestError) {
+      setError(requestError.message || 'The conversation could not be evaluated. Try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleInspire = () => {
     if (inputMode === 'text') {
       setTextDraft(question.inspire);
@@ -159,8 +174,15 @@ function App() {
 
           {complete ? (
             <div className="completion-actions">
-              <ConversationFeedback evaluation={finalEvaluation} />
-              <button type="button" className="send-button" onClick={reset}>Start Again</button>
+              {finalEvaluation ? <ConversationFeedback evaluation={finalEvaluation} /> : (
+                <>
+                  <p className="input-error" role="alert">{error || 'Feedback is not available yet.'}</p>
+                  <button type="button" className="quiet-button" onClick={retryFeedback} disabled={isLoading}>
+                    {isLoading ? 'Working…' : 'Retry feedback'}
+                  </button>
+                </>
+              )}
+              <button type="button" className="send-button" onClick={reset} disabled={isLoading}>Start Again</button>
             </div>
           ) : (
             <ConversationInput

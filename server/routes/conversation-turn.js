@@ -21,7 +21,15 @@ function parseConversationResponses(body) {
     && ['text', 'voice'].includes(item.inputMode)
     && item.response
     && item.response.length <= 2000
-  ) ? responses : null;
+  ) && questions.every(question => {
+    const count = responses.filter(item => item.questionId === question.id).length;
+    return count === 1 || count === 2;
+  }) && responses.every((item, index) => (
+    index === 0 || [0, 1].includes(
+      questions.findIndex(question => question.id === item.questionId)
+      - questions.findIndex(question => question.id === responses[index - 1].questionId)
+    )
+  )) ? responses : null;
 }
 
 function createConversationRouter(openai) {
